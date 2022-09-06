@@ -52,7 +52,8 @@ export class SearchMarkdownRenderer extends MarkdownRenderer {
     onRenderComplete() { }
 
     getFile() {
-        return this.match.parent.file;
+        const parentFile = isFifteenPlus ? this.match.parentDom.file : this.match.parent.file;
+        return parentFile;
     }
 
     async edit(content: string) {
