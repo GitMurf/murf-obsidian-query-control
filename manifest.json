@@ -1,7 +1,7 @@
 {
-  "id": "obsidian-query-control",
-  "name": "Query Control",
-  "version": "0.5.0",
+  "id": "obsidian-query-control-murf",
+  "name": "Query Control (Murf)",
+  "version": "0.5.a",
   "minAppVersion": "0.12.5",
   "description": "An experimental Obsidian plugin that adds additional control to queries",
   "author": "NothingIsLost",

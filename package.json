@@ -1,11 +1,13 @@
 {
-  "name": "obsidian-query-control",
+  "name": "obsidian-query-control-murf",
   "version": "0.0.1",
   "description": "An experimental Obsidian plugin that adds additional control to queries",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "node esbuild.config.mjs production"
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "version": "node version-bump.mjs && git add manifest.json versions.json",
+    "dev-local": "node dev-esbuild.config.mjs"
   },
   "keywords": [],
   "author": "",
