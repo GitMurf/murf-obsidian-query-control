@@ -51,6 +51,12 @@ declare module "obsidian" {
         children: SearchResultItem[];
         addResult(): void;
         removeResult(): void;
+        setRenderMarkdown(value: boolean): void;
+        onCopyResultsClick(event: MouseEvent): void;
+        renderMarkdownButtonEl: HTMLElement;
+        renderMarkdown: boolean;
+        settings: any;
+        app: App;
     }
     interface VaultSettings {
         foldHeading: boolean;
@@ -91,7 +97,7 @@ declare module "obsidian" {
         onResultClick(event: MouseEvent, e?: any): void;
         info: ItemInfo;
         collapsible: boolean;
-        collpased: boolean;
+        collapsed: boolean;
         extraContext: boolean;
         showTitle: boolean;
         parent: SearchResultDOM;
@@ -132,8 +138,22 @@ declare module "obsidian" {
         onunload(): void;
         onload(): void;
     }
+    interface LinkDom {
+        el: HTMLElement;
+        renderMarkdown: boolean;
+        vChildren: any;
+        children: any;
+        infinityScroll: InfinityScroll;
+        childrenEl: HTMLElement;
+    }
     class BacklinksClass extends Component {
-        backlinkDom: { el: HTMLElement }
+        backlinkDom: LinkDom;
+        patched: boolean;
+        unlinkedDom: LinkDom;
+        headerDom: SearchHeaderDOM;
+        setExtraContext(value: boolean): void;
+        sortOrder: boolean;
+        setCollapseAll(value: boolean): void;
     }
     interface WorkspaceItem {
         tabsInnerEl: HTMLElement;

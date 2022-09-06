@@ -24,7 +24,7 @@ import { translate } from "./utils";
 // EmbeddedSearch `onload` is patched to add a nav bar
 // a new component is added to handle the lifecycle of the rendered markdown elements
 
-// EmbeddedSearch has a `dom` property which holds an instance ofthe SearchResultDOM class
+// EmbeddedSearch has a `dom` property which holds an instance of the SearchResultDOM class
 // SearchResultDOM has children which are of type SearchResultItem
 
 // SearchResultItem has children which are of type SearchResultItemMatch
