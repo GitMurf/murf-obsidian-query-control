@@ -172,6 +172,7 @@ export default class EmbeddedQueryControlPlugin extends Plugin {
             around(searchView.constructor.prototype, {
                 onResize(old: any) {
                     return function (...args: any[]) {
+                        spmCleanupPatch(this);
                         // this works around measurement issues when the search el width
                         // goes to zero and then back to a non zero value
                         const _children = isFifteenPlus ? this.dom.vChildren?._children : this.dom.children;
@@ -409,6 +410,7 @@ export default class EmbeddedQueryControlPlugin extends Plugin {
         let uninstall = around(SearchResultItemClass.prototype, {
             onResultClick(old: any) {
                 return function (event: MouseEvent, e: any, ...args: any[]) {
+                    spmCleanupPatch(this);
                     if (
                         // TODO: Improve this exclusion list which allows for clicking
                         //       on elements without navigating to the match result
@@ -424,8 +426,9 @@ export default class EmbeddedQueryControlPlugin extends Plugin {
             },
             renderContentMatches(old: any) {
                 return function (...args: any[]) {
+                    spmCleanupPatch(this);
                     // TODO: Move this to its own around registration and uninstall on patch
-                    const result = old.call(this, ...args);
+                    const result: any = old.call(this, ...args);
                     const _children = isFifteenPlus ? this.vChildren?._children : this.children;
                     if (!plugin.isSearchResultItemMatchPatched && _children.length) {
                         let SearchResultItemMatch = _children.first().constructor;
@@ -483,6 +486,7 @@ export default class EmbeddedQueryControlPlugin extends Plugin {
             around(EmbeddedSearch.prototype, {
                 onunload(old: any) {
                     return function (...args: any[]) {
+                        spmCleanupPatch(this);
                         if (this.renderComponent) {
                             this.renderComponent.unload();
                             this.dom = null;
@@ -498,6 +502,7 @@ export default class EmbeddedQueryControlPlugin extends Plugin {
                 },
                 onload(old: any) {
                     return function (...args: any[]) {
+                        spmCleanupPatch(this);
                         try {
                             if (!this.renderComponent) {
                                 this.renderComponent = new Component();
@@ -638,4 +643,46 @@ function handleBacklinks(
         instance.setRenderMarkdown(instance.settings.renderMarkdown);
     } else {
     }
+}
+
+function spmCleanupPatch(thisObj: any) {
+    /*spm*/
+    //console.log("spmCleanupPatch", thisObj);
+    setTimeout(() => {
+        let rendComp = thisObj.renderComponent ? thisObj.renderComponent : null;
+        //console.log("rendComp 1",rendComp);
+        if (!rendComp) {
+            if (thisObj.parent) {
+                if (thisObj.parent.renderComponent) {
+                    rendComp = thisObj.parent.renderComponent;
+                    //console.log("rendComp 2",rendComp);
+                } else {
+                    if (thisObj.parent.parent) {
+                        rendComp = thisObj.parent.parent.renderComponent ? thisObj.parent.parent.renderComponent : null;
+                        //console.log("rendComp 3",rendComp);
+                    }
+                }
+                //console.log("rendComp 4",rendComp);
+            } else {
+                //console.log("rendComp 5",rendComp);
+            }
+        }
+        //console.log("renderComponent:", rendComp);
+        if (rendComp) {
+            const rendComponent = rendComp;
+            let removeComponents: any[] = [];
+            rendComponent._children.forEach((eachChild: any) => {
+                if (!eachChild.containerEl.isConnected) {
+                    removeComponents.push(eachChild);
+                }
+            })
+            let remCtr = 0;
+            removeComponents.forEach(eachComp => {
+                //console.log(eachComp);
+                rendComponent.removeChild(eachComp);
+                remCtr++;
+            })
+            //if(remCtr > 0) { console.log(`Removed ${remCtr} old stale components`); }
+        }
+    }, 100);
 }
