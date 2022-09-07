@@ -501,14 +501,23 @@ export default class EmbeddedQueryControlPlugin extends Plugin {
                             }
 
                             let highlightWords: string[] = [];
+                            const ignoreWords: string[] = [
+                                "[ ]",
+                                "[x]"
+                            ];
                             renderer.match.matches.forEach((eachMatch: number[]) => {
                                 let highlightWord = content.substring(eachMatch[0] - renderer.match.start - spacesCount, eachMatch[1] - renderer.match.start - spacesCount);
-                                if (!highlightWords.includes(highlightWord)) {
+                                if (!highlightWords.includes(highlightWord) && !ignoreWords.includes(highlightWord)) {
                                     highlightWords.push(highlightWord);
                                 }
                             });
 
                             highlightWords.forEach(eachWord => {
+                                const matchCheckbox = eachWord.match(/^[ ]*[\-\*] \[.\] (.*)/);
+                                if (matchCheckbox) {
+                                    // If the search keyword match includes the checkbox, exclude the checkbox from the highlight so it can be rendered and clickable
+                                    eachWord = matchCheckbox[1];
+                                }
                                 const regexEscaped = escapeRegExp(eachWord);
                                 // Escape the square bracket backlink if search term match is within a link name
                                 newContent = newContent.replace(new RegExp(`\\[\\[([^\\]\\[]*${regexEscaped}[^\\[\\]]*)\\]\\]`, "gm"), `\\[\\[$1\\]\\]`);
