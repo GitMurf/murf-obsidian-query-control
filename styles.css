@@ -36,3 +36,27 @@
   margin-block-end: 0;
   margin-block-start: 0;
 }
+
+.search-result-file-match .markdown-preview-view.markdown-rendered img {
+    max-height: 35vh;
+}
+
+.search-result-file-match .markdown-preview-view.markdown-rendered div>ul:not(.contains-task-list) {
+    padding-left: 15px;
+}
+
+.search-result-file-match .markdown-preview-view.markdown-rendered li>ul:not(.contains-task-list) {
+    padding-left: 20px;
+}
+
+.search-result-file-match .markdown-preview-view.markdown-rendered div>ul.contains-task-list {
+    padding-left: 25px;
+}
+
+.search-result-file-match .markdown-preview-view.markdown-rendered li>ul.contains-task-list {
+    padding-left: 20px;
+}
+
+.search-result-file-match .markdown-preview-view.markdown-rendered blockquote {
+    padding-left: 10px;
+}
