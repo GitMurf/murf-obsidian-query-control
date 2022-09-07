@@ -60,3 +60,14 @@
 .search-result-file-match .markdown-preview-view.markdown-rendered blockquote {
     padding-left: 10px;
 }
+
+.search-result-file-match .markdown-preview-view.markdown-rendered p {
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
+.search-result-file-match .markdown-preview-view.markdown-rendered [data-heading] {
+    font-size: 22px;
+    margin-top: 3px;
+    margin-bottom: 7px;
+}
