@@ -13,6 +13,7 @@ import {
     requireApiVersion,
     BacklinksClass,
     BacklinkDOMClass,
+    MarkdownView,
 } from "obsidian";
 import { SearchMarkdownRenderer } from "./search-renderer";
 import { DEFAULT_SETTINGS, EmbeddedQueryControlSettings, SettingTab, sortOptions } from "./settings";
@@ -94,6 +95,25 @@ export default class EmbeddedQueryControlPlugin extends Plugin {
             this.getSearchExport();
         }
 
+        this.registerEvent(
+            this.app.workspace.on('file-open', fileObj => {
+                // It seems that sometimes the backlinks do not properly update when changing files; force a refresh
+                if (fileObj !== null) {
+                    // Wait for 100 ms to allow for other native core backlink updates to occur
+                    setTimeout(async () => {
+                        // Refresh the backlinks embedded at the bottom of the active note
+                        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+                        if (activeView) { await refreshBacklinks(activeView.containerEl); }
+                        // Refresh the main backlinks in the right sidebar
+                        let containerEl = document.querySelector('.mod-right-split') as HTMLElement;
+                        if (containerEl) { await refreshBacklinks(containerEl); }
+                    }, 100);
+                } else {
+                    //console.log("Empty tab");
+                }
+            })
+        );
+
         // The only way to obtain the EmbeddedSearch class is to catch it while it's being added to a parent component
         // The following will patch Component.addChild and will remove itself once it finds and patches EmbeddedSearch
         this.register(
@@ -123,7 +143,7 @@ export default class EmbeddedQueryControlPlugin extends Plugin {
                         } catch (err) {
                             console.log(err);
                         }
-                        const result = old.call(this, child, ...args);
+                        const result: any = old.call(this, child, ...args);
                         return result;
                     };
                 },
@@ -396,7 +416,7 @@ export default class EmbeddedQueryControlPlugin extends Plugin {
                         } catch (err) {
                             console.log(err);
                         }
-                        const result = old.call(this, ...args);
+                        const result: any = old.call(this, ...args);
                         return result;
                     };
                 },
@@ -450,9 +470,11 @@ export default class EmbeddedQueryControlPlugin extends Plugin {
                     return function (...args: any[]) {
                         // NOTE: if we don't mangle ```query blocks, we could end up with infinite query recursion
                         let _parent = isFifteenPlus ? this.parentDom : this.parent;
-                        let content = _parent.content.substring(this.start, this.end).replace("```query", "\\`\\`\\`query");
+                        let content = _parent.content.substring(this.start, this.end);
                         let leadingSpaces = content.match(/^\s+/g)?.first();
+                        let spacesCount = 0;
                         if (leadingSpaces) {
+                            spacesCount = leadingSpaces.length;
                             content = content.replace(new RegExp(`^${leadingSpaces}`, "gm"), "");
                         }
                         let parentComponent = _parent.parent.parent;
@@ -467,7 +489,42 @@ export default class EmbeddedQueryControlPlugin extends Plugin {
                                 _parent?.parent?.infinityScroll.measure(_parent, this);
                             };
                             component.addChild(renderer);
-                            renderer.renderer.set(content);
+                            let newContent = content;
+                            if (newContent.substring(0, 3) === "```") {
+                                // Escape any equal signs in the code block so they dont get interpreted as highlights
+                                newContent = newContent.replace(/===/g, "\\=\\=\\=");
+                                newContent = newContent.replace(/==/g, "\\=\\=");
+                                // Escape any markdown characters within a codeblock
+                                newContent = newContent.replace(/(\*|\`|\_|\$)/g, "\\$1");
+                                // Replace spaces with non-breaking spaces so they show up in the rendered search results
+                                newContent = newContent.replace(/    /g, "&nbsp;&nbsp;&nbsp;&nbsp;");
+                            }
+
+                            let highlightWords: string[] = [];
+                            renderer.match.matches.forEach((eachMatch: number[]) => {
+                                let highlightWord = content.substring(eachMatch[0] - renderer.match.start - spacesCount, eachMatch[1] - renderer.match.start - spacesCount);
+                                if (!highlightWords.includes(highlightWord)) {
+                                    highlightWords.push(highlightWord);
+                                }
+                            });
+
+                            highlightWords.forEach(eachWord => {
+                                const regexEscaped = escapeRegExp(eachWord);
+                                // Escape the square bracket backlink if search term match is within a link name
+                                newContent = newContent.replace(new RegExp(`\\[\\[([^\\]\\[]*${regexEscaped}[^\\[\\]]*)\\]\\]`, "gm"), `\\[\\[$1\\]\\]`);
+                                // Add markdown highlight syntax (==) so the rendered results highlight the matched search terms
+                                newContent = newContent.replace(new RegExp(`${regexEscaped}`, "gm"), `==${eachWord}==`);
+                                // If the matched highlighted search term is the exact full name of a link, add the highlight around the entire link
+                                //      [[Search Term Match]] -> ==[[Search Term Match]]==
+                                newContent = newContent.replace(new RegExp(`\\\\\\[\\\\\\[==${regexEscaped}==\\\\\\]\\\\\\]`, "gm"), `==[[${eachWord}]]==`);
+                            });
+                            // Escape code block backticks
+                            newContent = newContent.replace(/```([\s\S]*?)(```|$)/, "\\`\\`\\`$1\\`\\`\\`");
+                            // This should be covered above, but just in case make sure search query embeds are escaped to avoid recursive rendering
+                            newContent = newContent.replace("```query", "\\`\\`\\`query");
+                            // Escape YAML frontmatter
+                            newContent = newContent.replace(/^---|---$/g, "\\-\\-\\-");
+                            renderer.renderer.set(newContent);
                         } else {
                             return old.call(this, ...args);
                         }
@@ -638,7 +695,9 @@ function handleBacklinks(
             }
         });
         backlinksInstance.setExtraContext(instance.settings.context);
-        backlinksInstance.sortOrder = instance.settings.sort;
+        // First set to nothing to force a refresh
+        backlinksInstance.setSortOrder('');
+        backlinksInstance.setSortOrder(instance.settings.sort);
         backlinksInstance.setCollapseAll(instance.settings.collapsed);
         instance.setRenderMarkdown(instance.settings.renderMarkdown);
     } else {
@@ -685,4 +744,30 @@ function spmCleanupPatch(thisObj: any) {
             //if(remCtr > 0) { console.log(`Removed ${remCtr} old stale components`); }
         }
     }, 100);
+}
+
+function escapeRegExp(text: string) {
+    return text.replace(/[\-\[\]\{\}\(\)\*\+\?\.\,\\\^\$\|\#]/g, '\\$&');
+}
+
+function getBacklinkDomInstance(el: HTMLElement) {
+    let backlinksInstance = null;
+    if (el) {
+        const containerEl = el.querySelector('.backlink-pane') as HTMLElement;
+        backlinksInstance = backlinkDoms.get(containerEl);
+    }
+    return backlinksInstance;
+}
+
+async function refreshBacklinks(el: HTMLElement) {
+    let backlinksInstance = getBacklinkDomInstance(el);
+    if (backlinksInstance) {
+        backlinksInstance.stopBacklinkSearch();
+        const myCount = backlinksInstance.backlinkDom.vChildren.children.length;
+        // If there are no backlinks, then clear the cache of rendered results as they keep stale results from previous file
+        if (myCount === 0) {
+            backlinksInstance.backlinkDom.childrenEl.empty();
+        }
+        await backlinksInstance.recomputeBacklink(backlinksInstance.file);
+    }
 }

@@ -153,6 +153,7 @@ declare module "obsidian" {
         headerDom: SearchHeaderDOM;
         setExtraContext(value: boolean): void;
         sortOrder: boolean;
+        setSortOrder(value: string): void;
         setCollapseAll(value: boolean): void;
     }
     interface WorkspaceItem {
