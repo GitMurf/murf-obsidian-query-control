@@ -57,16 +57,50 @@ export class SearchMarkdownRenderer extends MarkdownRenderer {
     }
 
     async edit(content: string) {
-        this.renderer.set(content);
+        //this.renderer.set(content);
         let cachedContent = await this.app.vault.cachedRead(this.file);
         let matchContent = cachedContent.slice(this.match.start, this.match.end);
-        let leadingSpaces = matchContent.match(/^\s+/g)?.first();
-        if (leadingSpaces) {
-            content = content.replace(/^/gm, leadingSpaces);
+        let newContent = "";
+        let checkboxChanged = false;
+        if (matchContent.match(/[ ]*[\-\*] \[.\] /)) {
+            const lineSplit = matchContent.split("\n");
+            const renderedContentSplit = content.split("\n");
+            for (let i = 0; i < lineSplit.length; i++) {
+                const eachLine = lineSplit[i];
+                let updatedCheckbox = eachLine;
+                const checkBoxMatch = eachLine.match(/[ ]*[\-\*] \[.\] /);
+                if (checkBoxMatch && checkboxChanged === false) {
+                    const lineCheckType = eachLine.match(/[ ]*[\-\*] \[(.)\] /);
+                    const renderedLine = renderedContentSplit[i];
+                    const renderedLineCheckType = renderedLine.match(/[ ]*[\-\*] \[(.)\] /);
+                    if (lineCheckType && renderedLineCheckType) {
+                        if (lineCheckType[1] != renderedLineCheckType[1]) {
+                            checkboxChanged = true;
+                            updatedCheckbox = updatedCheckbox.replace(/^([ ]*[\-\*] )\[.\] /, `$1[${renderedLineCheckType[1]}] `);
+                        } else {
+                        }
+                    }
+                }
+                if (i > 0) {
+                    newContent += "\n";
+                }
+                newContent += updatedCheckbox;
+            }
+        } else {
+            // console.log("No checkbox found in search match");
         }
-        let before = cachedContent.slice(0, this.match.start);
-        let after = cachedContent.slice(this.match.end, this.match.parent.content.length);
-        var combinedContent = before + content + after;
-        this.app.vault.modify(this.file, combinedContent);
+        if (checkboxChanged && newContent !== matchContent) {
+            let before = cachedContent.slice(0, this.match.start);
+            let after = cachedContent.substring(this.match.end);
+            let combinedContent = before + newContent + after;
+            this.app.vault.modify(this.file, combinedContent);
+            console.log(`Checkbox changed, updating file from:\n\n${matchContent}\n\nto -->\n\n${newContent}`);
+        } else {
+            console.log("Not a checkbox... but something else was trying to be edited... need to investigate! Did NOT change the file at all though.");
+            console.log("Class SearchMarkdownRenderer.edit():\n", content);
+            console.log(this);
+            console.log(this.renderer);
+        }
+        //this.renderer.rerender();
     }
 }
